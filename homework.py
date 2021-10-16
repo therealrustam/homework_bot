@@ -29,33 +29,39 @@ def send_message(bot, message):
 
 
 def get_api_answer(url, current_timestamp):
-    ...
+    payload = {'from_date': current_timestamp}
+    response = requests.get(
+        ENDPOINT, headers=headers, params=payload)
+    if response.status_code != 200:
+        logging.error(
+            f'<The answer is not 200>: {response.status_code}')
+        raise requests.HTTPError('<The answer is not 200>')
+    response = response.json()
+    return response
 
 
 def parse_status(homework):
-    verdict = homework.get('status')
+    verdict = homework[0]['status']
+    verdict = HOMEWORK_STATUSES[verdict]
     homework_name = homework.get('homework_name')
-
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_response(response):
     homeworks = response.get('homeworks')
-    ...
+    parse_status(homeworks)
 
 
 def main():
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     current_timestamp = current_timestamp - 2592000
-    payload = {'from_date': current_timestamp}
-    response = requests.get(
-        ENDPOINT, headers=headers, params=payload).json()
-    print(response)
     while True:
         try:
-            ...
+            response = get_api_answer(ENDPOINT, current_timestamp)
+            check_response(response)
             time.sleep(RETRY_TIME)
+            send_message(bot, message)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
