@@ -1,6 +1,7 @@
 """Телеграм бот-ассистент. Итоговый проект."""
 
 import logging
+import sys
 import os
 import time
 
@@ -9,7 +10,9 @@ import telegram
 from dotenv import load_dotenv
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
+                    handlers=[logging.StreamHandler(sys.stdout), ])
 
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -30,7 +33,7 @@ HOMEWORK_STATUSES = {
 def send_message(bot, message):
     """Метод отправки сообщении ботом."""
     bot.send_message(chat_id=CHAT_ID, text=message)
-    logging.info('Сообщение отправлено')
+    logging.info('Бот отправил сообщение')
 
 
 def get_api_answer(url, current_timestamp):
@@ -40,7 +43,9 @@ def get_api_answer(url, current_timestamp):
         ENDPOINT, headers=headers, params=payload)
     if response.status_code != 200:
         logging.error(
-            f'Код состояния HTTP не равен 200: {response.status_code}')
+            'Сбой в работе программы: Эндпоинт'
+            ' https://practicum.yandex.ru/api/user_api/homework_statuses/111'
+            f' недоступен. Код ответа API: {response.status_code}')
         raise requests.HTTPError('Код состояния HTTP не равен 200')
     response = response.json()
     return response
@@ -51,7 +56,8 @@ def parse_status(homework):
     verdict = homework.get('status')
     verdict = HOMEWORK_STATUSES[verdict]
     homework_name = homework.get('homework_name')
-    logging.info('Изменился статус проверки работы')
+    logging.info(
+        f'Изменился статус проверки работы "{homework_name}". {verdict}')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
@@ -80,6 +86,8 @@ def check_response(response):
 
 def main():
     """Метод выполнения основного кода."""
+    if (PRACTICUM_TOKEN == '') or (TELEGRAM_TOKEN == '') or (CHAT_ID == 0):
+        logging.critical('Отсутствуют обязательные переменные окружения')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     current_timestamp = current_timestamp - RETRY_TIME
