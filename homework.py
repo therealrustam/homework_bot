@@ -10,7 +10,7 @@ import telegram
 from dotenv import load_dotenv
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
                     handlers=[logging.StreamHandler(sys.stdout), ])
 logger = logging.getLogger(__name__)
@@ -47,6 +47,7 @@ def get_api_answer(url, current_timestamp):
             'Сбой в работе программы: Эндпоинт'
             ' https://practicum.yandex.ru/api/user_api/homework_statuses/111'
             f' недоступен. Код ответа API: {response.status_code}')
+        # вызов исключения для отправки ботом сообщения в телеграм
         raise Exception('Код состояния HTTP не равен 200')
     response = response.json()
     return response
@@ -58,6 +59,7 @@ def parse_status(homework):
     verdict = HOMEWORK_STATUSES[status]
     if not homework.get('homework_name'):
         logger.error('Нет названия домашней работы')
+        # вызов исключения для отправки ботом сообщения в телеграм
         raise Exception('Нет названия домашней работы')
     homework_name = homework.get('homework_name')
     message = f'Изменился статус проверки работы "{homework_name}". {verdict}'
@@ -67,12 +69,15 @@ def parse_status(homework):
 
 def check_response(response):
     """Метод проверки полученного ответа на корректность и проверка статуса."""
+    logger.debug(response)
     if not response['homeworks']:
         logger.error('Нет данных')
+        # вызов исключения для отправки ботом сообщения в телеграм
         raise Exception('Нет данных')
     status = response['homeworks'][0].get('status')
     if status not in HOMEWORK_STATUSES:
         logger.error('Неизвестный статус')
+        # вызов исключения для отправки ботом сообщения в телеграм
         raise Exception('Неизвестный статус')
     if counter[0] == 0:
         old_status[0] = status
@@ -88,11 +93,13 @@ def check_response(response):
 def main():
     """Метод выполнения основного кода."""
     if (PRACTICUM_TOKEN == '') or (TELEGRAM_TOKEN == '') or (CHAT_ID == 0):
-        logger.critical('Отсутствуют обязательные переменные окружения')
-        raise Exception('Отсутствуют обязательные переменные окружения')
+        message = 'Отсутствуют обязательные переменные окружения'
+        logger.critical(message)
+        # вызов исключения для отправки ботом сообщения в телеграм
+        raise Exception(message)
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
-    current_timestamp = current_timestamp - RETRY_TIME
+    current_timestamp = current_timestamp - 86400
     while True:
         try:
             response = get_api_answer(ENDPOINT, current_timestamp)
@@ -102,7 +109,7 @@ def main():
                 send_message(bot, message)
             time.sleep(RETRY_TIME)
             current_timestamp = int(time.time())
-            current_timestamp = current_timestamp - RETRY_TIME
+            current_timestamp = current_timestamp - 86400
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logger.error(
@@ -110,7 +117,7 @@ def main():
             send_message(bot, message)
             time.sleep(RETRY_TIME)
             current_timestamp = int(time.time())
-            current_timestamp = current_timestamp - RETRY_TIME
+            current_timestamp = current_timestamp - 86400
             continue
 
 
