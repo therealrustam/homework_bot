@@ -13,6 +13,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
                     handlers=[logging.StreamHandler(sys.stdout), ])
+logger = logging.getLogger(__name__)
 
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -33,7 +34,7 @@ HOMEWORK_STATUSES = {
 def send_message(bot, message):
     """Метод отправки сообщении ботом."""
     bot.send_message(chat_id=CHAT_ID, text=message)
-    logging.info('Бот отправил сообщение')
+    logger.info('Бот отправил сообщение')
 
 
 def get_api_answer(url, current_timestamp):
@@ -42,7 +43,7 @@ def get_api_answer(url, current_timestamp):
     response = requests.get(
         ENDPOINT, headers=headers, params=payload)
     if response.status_code != 200:
-        logging.error(
+        logger.error(
             'Сбой в работе программы: Эндпоинт'
             ' https://practicum.yandex.ru/api/user_api/homework_statuses/111'
             f' недоступен. Код ответа API: {response.status_code}')
@@ -56,22 +57,21 @@ def parse_status(homework):
     verdict = homework.get('status')
     verdict = HOMEWORK_STATUSES[verdict]
     homework_name = homework.get('homework_name')
-    logging.info(
+    logger.info(
         f'Изменился статус проверки работы "{homework_name}". {verdict}')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_response(response):
     """Метод проверки полученного ответа на корректность и проверка статуса."""
-    if response['homeworks'] == []:
-        logging.error('Нет данных')
+    if not response['homeworks']:
+        logger.error('Нет данных')
         raise Exception('Нет данных')
     if response['homeworks'][0].get('status') not in ['approved',
                                                       'reviewing',
                                                       'rejected', ]:
-        logging.error('Неизвестный статус')
+        logger.error('Неизвестный статус')
         raise Exception('Неизвестный статус')
-    print(response)
     if counter[0] == 0:
         old_status[0] = response['homeworks'][0].get('status')
         counter[0] = 1
@@ -87,7 +87,7 @@ def check_response(response):
 def main():
     """Метод выполнения основного кода."""
     if (PRACTICUM_TOKEN == '') or (TELEGRAM_TOKEN == '') or (CHAT_ID == 0):
-        logging.critical('Отсутствуют обязательные переменные окружения')
+        logger.critical('Отсутствуют обязательные переменные окружения')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     current_timestamp = current_timestamp - RETRY_TIME
@@ -103,7 +103,7 @@ def main():
             current_timestamp = current_timestamp - RETRY_TIME
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            logging.error(
+            logger.error(
                 f'Сбой в работе программы: {error}')
             send_message(bot, message)
             time.sleep(RETRY_TIME)
