@@ -47,19 +47,22 @@ def get_api_answer(url, current_timestamp):
             'Сбой в работе программы: Эндпоинт'
             ' https://practicum.yandex.ru/api/user_api/homework_statuses/111'
             f' недоступен. Код ответа API: {response.status_code}')
-        raise requests.HTTPError('Код состояния HTTP не равен 200')
+        raise Exception('Код состояния HTTP не равен 200')
     response = response.json()
     return response
 
 
 def parse_status(homework):
     """Метод анализа статуса и подготовки сообщения."""
-    verdict = homework.get('status')
-    verdict = HOMEWORK_STATUSES[verdict]
+    status = homework.get('status')
+    verdict = HOMEWORK_STATUSES[status]
+    if not homework.get('homework_name'):
+        logger.error('Нет названия домашней работы')
+        raise Exception('Нет названия домашней работы')
     homework_name = homework.get('homework_name')
-    logger.info(
-        f'Изменился статус проверки работы "{homework_name}". {verdict}')
-    return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    message = f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    logger.info(message)
+    return message
 
 
 def check_response(response):
@@ -67,17 +70,15 @@ def check_response(response):
     if not response['homeworks']:
         logger.error('Нет данных')
         raise Exception('Нет данных')
-    if response['homeworks'][0].get('status') not in ['approved',
-                                                      'reviewing',
-                                                      'rejected', ]:
+    status = response['homeworks'][0].get('status')
+    if status not in HOMEWORK_STATUSES:
         logger.error('Неизвестный статус')
         raise Exception('Неизвестный статус')
     if counter[0] == 0:
-        old_status[0] = response['homeworks'][0].get('status')
+        old_status[0] = status
         counter[0] = 1
         return old_status[0]
     if counter[0] == 1:
-        status = response['homeworks'][0].get('status')
         if status == old_status[0]:
             return False
         else:
@@ -88,6 +89,7 @@ def main():
     """Метод выполнения основного кода."""
     if (PRACTICUM_TOKEN == '') or (TELEGRAM_TOKEN == '') or (CHAT_ID == 0):
         logger.critical('Отсутствуют обязательные переменные окружения')
+        raise Exception('Отсутствуют обязательные переменные окружения')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     current_timestamp = current_timestamp - RETRY_TIME
