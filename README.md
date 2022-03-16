@@ -16,10 +16,12 @@
 Активируйте виртуальное окружение.
 В виртуальном окружении установите зависимости: pip install -r requirements.txt
 
-## Технологии
+## Стек технологии
 
-Python
-Telegram
+- Python
+- Telegram-bot
+- Requests
+- Dotenv
 
 ## Авторы
 
